@@ -138,10 +138,10 @@
         color: #888; text-decoration: line-through;\
       }\
       #sh-panel .sh-step-btn {\
-        padding: 5px 12px; border: none; border-radius: 6px;\
-        font-size: 12px; font-weight: bold; cursor: pointer;\
+        padding: 10px 18px; border: none; border-radius: 8px;\
+        font-size: 14px; font-weight: bold; cursor: pointer;\
         background: #4fc3f7; color: #000; flex-shrink: 0;\
-        transition: background 0.2s;\
+        transition: background 0.2s; min-height: 36px;\
       }\
       #sh-panel .sh-step-btn:hover {\
         background: #81d4fa;\
@@ -162,9 +162,9 @@
         background: #ffb74d;\
       }\
       #sh-log {\
-        margin-top: 8px; padding: 6px; background: #0d1b2a;\
-        border-radius: 6px; font-size: 10px; color: #666;\
-        max-height: 60px; overflow-y: auto; white-space: pre-wrap;\
+        margin-top: 10px; padding: 10px; background: #0d1b2a;\
+        border-radius: 8px; font-size: 13px; color: #999; line-height: 1.6;\
+        max-height: 120px; overflow-y: auto; white-space: pre-wrap;\
         font-family: monospace;\
       }\
       #sh-panel .sh-info {\
@@ -186,6 +186,33 @@
         50% { opacity: 0.6; }\
       }\
       .sh-blink { animation: sh-pulse 1s infinite; }\
+      #sh-panel .sh-btn-area {\
+        display: flex; gap: 10px; margin-top: 14px;\
+      }\
+      #sh-panel .sh-action-btn {\
+        flex: 1; padding: 16px 0; border: none; border-radius: 10px;\
+        font-size: 17px; font-weight: bold; cursor: pointer;\
+        transition: background 0.2s; min-height: 52px;\
+        background: #4fc3f7; color: #000;\
+      }\
+      #sh-panel .sh-action-btn:hover {\
+        background: #81d4fa;\
+      }\
+      #sh-panel .sh-action-btn:disabled {\
+        background: #333; color: #666; cursor: default;\
+      }\
+      #sh-panel .sh-action-btn.green {\
+        background: #00c853; color: #fff;\
+      }\
+      #sh-panel .sh-action-btn.green:hover {\
+        background: #00e676;\
+      }\
+      #sh-panel .sh-action-btn.orange {\
+        background: #ff9800; color: #000;\
+      }\
+      #sh-panel .sh-action-btn.orange:hover {\
+        background: #ffb74d;\
+      }\
     ';
     document.head.appendChild(s);
   }
@@ -218,12 +245,15 @@
         <div class="sh-step" id="sh-s1">\
           <div class="sh-num">1</div>\
           <div class="sh-desc">\uB0A0\uC9DC \uC120\uD0DD + \uC608\uC57D\uD558\uAE30 \u2192 2\uD398\uC774\uC9C0 \uC774\uB3D9</div>\
-          <button class="sh-step-btn green" id="sh-run1">\uC2E4\uD589</button>\
         </div>\
       </div>\
       <div class="sh-info" id="sh-status">\uC124\uC815 \uD6C4 \uC2E4\uD589 \uBC84\uD2BC\uC744 \uB204\uB974\uC138\uC694</div>\
       <div class="sh-refresh-info" id="sh-refresh" style="display:none;">\uC624\uD508 \uB300\uAE30 \uC911... <span id="sh-countdown"></span>\uCD08 \uD6C4 \uC0C8\uB85C\uACE0\uCE68</div>\
-      <div id="sh-log"></div>';
+      <div id="sh-log"></div>\
+      <div class="sh-btn-area">\
+        <button class="sh-action-btn" id="sh-refresh-btn">\uC0C8\uB85C\uACE0\uCE68</button>\
+        <button class="sh-action-btn" id="sh-run1" disabled>\uC2E4\uD589</button>\
+      </div>';
   }
 
   function initPage1() {
@@ -254,6 +284,21 @@
       runPage1();
     });
 
+    // 새로고침 버튼
+    document.getElementById('sh-refresh-btn').addEventListener('click', function () {
+      location.reload();
+    });
+
+    // 날짜 선택 가능 여부 체크
+    document.getElementById('sh-date').addEventListener('change', checkDateAvailable);
+    checkDateAvailable();
+    // 캘린더 비동기 로딩 감지 (DOM 변경 시 재체크)
+    var calCheckTimer = null;
+    new MutationObserver(function () {
+      clearTimeout(calCheckTimer);
+      calCheckTimer = setTimeout(checkDateAvailable, 100);
+    }).observe(document.body, { childList: true, subtree: true });
+
     // autoStart 체크 (새로고침 후 자동 실행)
     var autoRun = GM_getValue('seonam_autorun', false);
     if (autoRun) {
@@ -272,6 +317,36 @@
     config.targetDate = document.getElementById('sh-date').value;
     config.targetTime = document.getElementById('sh-time').value;
     config.headcount = parseInt(document.getElementById('sh-count').value) || 10;
+  }
+
+  function checkDateAvailable() {
+    var dateInput = document.getElementById('sh-date');
+    var btn = document.getElementById('sh-run1');
+    var status = document.getElementById('sh-status');
+    if (!dateInput || !btn || !status) return;
+
+    if (!dateInput.value) {
+      btn.disabled = true;
+      status.textContent = '\uB0A0\uC9DC\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694';
+      status.style.color = '#aaa';
+      return;
+    }
+
+    var dateStr = dateInput.value.replace(/-/g, '');
+    var calId = 'cal_' + dateStr;
+    var dateButton = document.getElementById(calId);
+
+    if (dateButton) {
+      btn.disabled = false;
+      btn.classList.add('green');
+      status.textContent = '\u2714 \uB0A0\uC9DC \uC120\uD0DD \uAC00\uB2A5! \uC2E4\uD589 \uBC84\uD2BC\uC744 \uB204\uB974\uC138\uC694';
+      status.style.color = '#81c784';
+    } else {
+      btn.disabled = true;
+      btn.classList.remove('green');
+      status.textContent = '\u2716 \uD574\uB2F9 \uB0A0\uC9DC \uC120\uD0DD \uBD88\uAC00 (\uBBF8\uC624\uD508)';
+      status.style.color = '#ff9800';
+    }
   }
 
   function runPage1() {
@@ -364,7 +439,6 @@
         <div class="sh-step" id="sh-s4">\
           <div class="sh-num">4</div>\
           <div class="sh-desc">\uB3D9\uC758\uCCB4\uD06C + CAPTCHA \uD3EC\uCEE4\uC2A4</div>\
-          <button class="sh-step-btn green" id="sh-run4">\uC2E4\uD589</button>\
         </div>\
         <div class="sh-step" id="sh-s5">\
           <div class="sh-num">5</div>\
@@ -374,11 +448,14 @@
         <div class="sh-step" id="sh-s6">\
           <div class="sh-num">6</div>\
           <div class="sh-desc">\uC608\uC57D\uD558\uAE30 (fn_Resev \uD638\uCD9C)</div>\
-          <button class="sh-step-btn orange" id="sh-run6">\uC608\uC57D!</button>\
         </div>\
       </div>\
       <div class="sh-info" id="sh-status">1~3\uB2E8\uACC4 \uC218\uB3D9 \uC644\uB8CC \uD6C4 \u2192 4\uB2E8\uACC4 \uC2E4\uD589</div>\
-      <div id="sh-log"></div>';
+      <div id="sh-log"></div>\
+      <div class="sh-btn-area">\
+        <button class="sh-action-btn green" id="sh-run4">4. \uB3D9\uC758+\uD3EC\uCEE4\uC2A4</button>\
+        <button class="sh-action-btn orange" id="sh-run6">6. \uC608\uC57D!</button>\
+      </div>';
   }
 
   function initPage2() {
@@ -486,7 +563,7 @@
     if (minBtn) {
       minBtn.addEventListener('click', function () {
         minimized = !minimized;
-        var content = panel.querySelectorAll('.sh-step-area, .sh-info, #sh-log, .sh-row, .sh-refresh-info');
+        var content = panel.querySelectorAll('.sh-step-area, .sh-info, #sh-log, .sh-row, .sh-refresh-info, .sh-btn-area');
         for (var i = 0; i < content.length; i++) {
           content[i].style.display = minimized ? 'none' : '';
         }
