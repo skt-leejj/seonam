@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         서남센터 축구장 예약 도우미
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  서울시 공공서비스예약 - 서남센터 축구장 단계별 예약 보조 도구
 // @match        https://yeyak.seoul.go.kr/web/reservation/selectReservView.do*
 // @match        https://yeyak.seoul.go.kr/web/reservation/insertFormReserve.do*
@@ -252,6 +252,7 @@
       <div id="sh-log"></div>\
       <div class="sh-btn-area">\
         <button class="sh-action-btn" id="sh-refresh-btn">\uC0C8\uB85C\uACE0\uCE68</button>\
+        <button class="sh-action-btn orange" id="sh-move-month" style="display:none;">\uB2E4\uC74C\uB2EC \uC774\uB3D9</button>\
         <button class="sh-action-btn" id="sh-run1" disabled>\uC2E4\uD589</button>\
       </div>';
   }
@@ -289,6 +290,17 @@
       location.reload();
     });
 
+    // 다음달 이동 버튼
+    document.getElementById('sh-move-month').addEventListener('click', function () {
+      var navBtn = document.querySelector('.cal_next');
+      if (navBtn && typeof navBtn.onclick === 'function') {
+        navBtn.onclick();
+        log('다음달로 캘린더 이동');
+      } else {
+        log('cal_next 버튼 미발견');
+      }
+    });
+
     // 날짜 선택 가능 여부 체크
     document.getElementById('sh-date').addEventListener('change', checkDateAvailable);
     checkDateAvailable();
@@ -323,20 +335,45 @@
     var dateInput = document.getElementById('sh-date');
     var btn = document.getElementById('sh-run1');
     var status = document.getElementById('sh-status');
+    var moveBtn = document.getElementById('sh-move-month');
     if (!dateInput || !btn || !status) return;
 
     if (!dateInput.value) {
       btn.disabled = true;
+      if (moveBtn) moveBtn.style.display = 'none';
       status.textContent = '\uB0A0\uC9DC\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694';
       status.style.color = '#aaa';
       return;
     }
 
     var dateStr = dateInput.value.replace(/-/g, '');
+
+    // 현재 캘린더 년/월 확인
+    var yyyyEl = document.getElementById('yyyy');
+    var mmEl = document.getElementById('mm');
+    if (yyyyEl && mmEl) {
+      var calYM = yyyyEl.value + ('0' + mmEl.value).slice(-2);
+      var targetYM = dateStr.substring(0, 6);
+      if (calYM !== targetYM) {
+        // 다른 달: 이동 버튼 표시
+        if (moveBtn) moveBtn.style.display = '';
+        btn.disabled = true;
+        btn.classList.remove('green');
+        status.textContent = '\u2192 \uB2E4\uC74C\uB2EC \uC774\uB3D9 \uBC84\uD2BC\uC744 \uB20C\uB7EC \uCE98\uB9B0\uB354\uB97C \uC774\uB3D9\uD558\uC138\uC694';
+        status.style.color = '#ff9800';
+        return;
+      }
+    }
+
+    // 같은 달: 이동 버튼 숨김
+    if (moveBtn) moveBtn.style.display = 'none';
+
     var calId = 'cal_' + dateStr;
     var dateButton = document.getElementById(calId);
+    var parentTd = dateButton ? dateButton.closest('td') : null;
+    var isSelectable = parentTd && parentTd.classList.contains('able');
 
-    if (dateButton) {
+    if (isSelectable) {
       btn.disabled = false;
       btn.classList.add('green');
       status.textContent = '\u2714 \uB0A0\uC9DC \uC120\uD0DD \uAC00\uB2A5! \uC2E4\uD589 \uBC84\uD2BC\uC744 \uB204\uB974\uC138\uC694';
@@ -344,7 +381,9 @@
     } else {
       btn.disabled = true;
       btn.classList.remove('green');
-      status.textContent = '\u2716 \uD574\uB2F9 \uB0A0\uC9DC \uC120\uD0DD \uBD88\uAC00 (\uBBF8\uC624\uD508)';
+      status.textContent = dateButton
+        ? '\u2716 \uD574\uB2F9 \uB0A0\uC9DC \uC120\uD0DD \uBD88\uAC00 (\uBBF8\uC624\uD508/\uB9C8\uAC10)'
+        : '\u2716 \uD574\uB2F9 \uB0A0\uC9DC \uBBF8\uD45C\uC2DC';
       status.style.color = '#ff9800';
     }
   }
